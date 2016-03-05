@@ -20,7 +20,6 @@
         (reset! rethink-inst nil))))
   nil)
 
-;; fixme: should be a conditional initializer
 (defn ensure-tables [conn db tables]
   (let [pre      (-> (r/db db)
                      (r/table-list)
