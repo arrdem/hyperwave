@@ -66,13 +66,4 @@
            (r/table cfg/users-table)
            (r/run @cfg/rethink-inst))))
 
-(defn try-auth [username pw]
-  {:pre [(string? username)
-         (bcrypt-hash? pw)]}
-  (or (when-let [u (get-user username)]
-        (let [{:keys [password]} u]
-          (if (= pw password)
-            u)))
-      false))
-
 ;; FIXME: needs username search
