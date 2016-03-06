@@ -23,17 +23,26 @@
 (defn- ->user [{:keys [id password roles meta] :as u}]
   (when u (update u :roles (comp set (partial map keyword)))))
 
-(defn get-user [username]
+
+;; FIXME: prime use for a LRU cache at least
+(defn get-user
+  "Looks up a user from the db by ID, returning either a user structure or nil if there is no user
+  with that username."
+  [username]
   (-> (r/db cfg/rethink-db)
       (r/table cfg/users-table)
       (r/get username)
       (r/run @cfg/rethink-inst)
       ->user))
 
-(defn exists? [username]
+(defn exists?
+  "Looks for a user in the DB by ID, returning true if such a user exists, otherwise nil."
+  [username]
   (boolean (get-user username)))
 
-(defn add-user! [{:keys [username password] :as u}]
+(defn add-user!
+  "Inserts a new user into the database, creating a blocklist and a feed for them."
+  [{:keys [username password] :as u}]
   {:pre [(string? username)
          (not (exists? username))
          (bcrypt-hash? password)]}
@@ -60,7 +69,9 @@
           (r/insert [u''])
           (r/run @cfg/rethink-inst)))))
 
-(defn get-users []
+(defn get-users
+  "Returns a seq of all the users in the database as full records."
+  []
   (map ->user
        (-> (r/db cfg/rethink-db)
            (r/table cfg/users-table)
