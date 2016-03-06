@@ -4,6 +4,12 @@
             [hyperwave.web.models.blocklist :as m.b]
             [rethinkdb.query :as r]))
 
+(defn- bcrypt-hash?
+  "Validates that the given String is an encoded bcrypt hash."
+  [s]
+  {:pre [(string? s)]}
+  (boolean (re-find #"\$2[aby]\$\d*\$[^\$]{53}" s)))
+
 (derive ::admin ::user)
 
 #_(def users
@@ -27,12 +33,10 @@
 (defn exists? [username]
   (boolean (get-user username)))
 
-(defn add-user! [{:keys [username ^String password] :as u}]
+(defn add-user! [{:keys [username password] :as u}]
   {:pre [(string? username)
          (not (exists? username))
-         (string? password)
-         ;; FIXME: is this fragile or not?
-         (.startsWith password "$2a$10$")]}
+         (bcrypt-hash? password)]}
   (let [u' (-> u
                (assoc :id username)
                (dissoc :username)
@@ -45,7 +49,7 @@
         (r/run @cfg/rethink-inst))
 
     (let [feed      (m.f/make-feed      {:admins [username]})
-          blocklist (m.f/make-blocklist {:admins [username]})
+          blocklist (m.b/make-blocklist {:admins [username]})
           u''       (-> u'
                         (update :feeds conj feed)
                         (update :blocklists conj blocklist))]
@@ -62,11 +66,9 @@
            (r/table cfg/users-table)
            (r/run @cfg/rethink-inst))))
 
-(defn try-auth [username ^String pw]
+(defn try-auth [username pw]
   {:pre [(string? username)
-         (string? pw)
-         ;; FIXME: is this fragile or not?
-         (.startsWith pw "$2a$10$")]}
+         (bcrypt-hash? pw)]}
   (or (when-let [u (get-user username)]
         (let [{:keys [password]} u]
           (if (= pw password)
