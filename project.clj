@@ -9,6 +9,7 @@
                  [org.clojure/core.cache "0.6.4"]
                  [joda-time "2.8.2"]
                  [clj-time "0.11.0"]
+                 [danlentz/clj-uuid "0.1.6"]
                  [aleph "0.4.1-beta5"]
                  [cheshire "5.5.0"]
                  [me.arrdem/guten-tag "0.1.6"]
@@ -34,7 +35,6 @@
 
              :dev    {:dependencies [[ring/ring-mock "0.3.0"]]
                       :source-paths ["src/dev"]
-                      :main         user
-                      :env          {:url "http://127.0.0.1:3000"}}
+                      :main         user}
 
              :user   [:server :dev :arrdem]})

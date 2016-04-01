@@ -1,8 +1,14 @@
 (ns hyperwave.web.server
+  "Implementation of the runnable webserver
+  
+  Ties together the Ring routes with initializer code and a webserver."
+  {:authors ["Reid 'arrdem' McKenzie <me@arrdem.com>"]}
   (:require [compojure.handler :as handler]
             [ring.middleware.session :as session]
+            [cemerick.friend.credentials :as creds]
             [hyperwave.web.routes :refer [secured-app]]
-            [hyperwave.web.config :refer :all]
+            [hyperwave.web.config :as cfg]
+            [hyperwave.web.models.user :as m.u]
             [ring.adapter.jetty :as jetty]
             [rethinkdb.query :as r]
             [taoensso.timbre :as timbre :refer [info warn]]))
@@ -42,6 +48,29 @@
       (-> (r/db-create db)
           (r/run conn))
       true)))
+
+(def users
+  (let [rid #uuid "a5a1d3d0-4738-450f-a6dc-f89515fc6cee"
+        uid #uuid "2d6dc6a7-b4f8-45eb-878d-2fa5ece63efa"]
+    {rid {:id         rid
+          :username   "admin"
+          :password   (creds/hash-bcrypt "admin")
+          :feeds      []
+          :blacklists []
+          :roles      [::admin ::user]}
+     uid {:id         uid
+          :username   "arrdrunk"
+          :password   (creds/hash-bcrypt "user_password")
+          :feeds      []
+          :blacklists []
+          :roles      [::user]}}))
+
+(defn ensure-users!
+  "Inserts all the default users"
+  []
+  (doseq [[uid u] users
+          :when   (not (m.u/exists? uid))]
+    (m.u/add-user! u)))
 
 (defn build-db!
   "Builds the various database tables"

@@ -1,4 +1,5 @@
 (ns hyperwave.web.config
+  {:authors ["Reid 'arrdem' McKenzie <me@arrdem.com>"]}
   (:require [environ.core :refer [env]]))
 
 (defonce jetty-inst

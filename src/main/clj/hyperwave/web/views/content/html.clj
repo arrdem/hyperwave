@@ -8,11 +8,28 @@
    cfg/site
    "Unauthed user home T_T nothing here yet..."))
 
-(defn signup-view [])
+(defn signup-view [& {:keys [errors username]}]
+  (layout
+   cfg/site
+   "Sign up!" [:br]
+   (form/form-to
+    [:put "/signup"]
+
+    (when (:username errors)
+      [:div "Username" username "is already taken :("])
+    "Username:  " (form/text-field "username" username) [:br]
+
+    (when (:password errors)
+      [:div "Passwords didn't match!"])
+    "Password:  " (form/text-field "password") [:br]
+    "Verify pw: " (form/text-field "verify") [:br]
+
+    (form/submit-button "Submit"))))
 
 (defn login-view []
   (layout
    cfg/site
+   "Log in!" [:br]
    (form/form-to
     [:put "/login"]
     "Username: " (form/text-field "username") [:br]

@@ -1,5 +1,10 @@
 (ns hyperwave.web.routes
-  (:require [cemerick.friend :as friend]
+  "Routes for the main hyperwave app
+
+  This includes the basic HTML user interface, the admin console and the API"
+  {:authors ["Reid 'arrdem' McKenzie <me@arrdem.com>"]}
+  (:require [clojure.string :as str]
+            [cemerick.friend :as friend]
             [cemerick.friend
              [credentials :as creds]
              [workflows :as workflows]]
@@ -9,7 +14,7 @@
             [ring.util.response :as response]
             [hyperwave.web.views.content.html :as html]
             [hyperwave.web.models.user :as m.u]
-            [taoensso.timbre :as timbre :refer [warn]]))
+            [taoensso.timbre :as timbre :refer [info warn debug]]))
 
 (defroutes public-routes
   (GET "/" []
@@ -21,15 +26,14 @@
   (GET "/login" []
     (html/login-view))
 
+  ;; Implictit PUT /login from friend
+
   (friend/logout
    (ANY "/logout" []
      (ring.util.response/redirect "/")))
 
   (GET "/signup" []
     (html/signup-view))
-
-  (PUT "/signup" {{:keys [username password]} :params}
-    )
   
   (route/resources "/public")
 
@@ -38,7 +42,7 @@
      (warn (pr-str {:uri        uri
                     :type       :html
                     :user-agent (get-in req [:headers "user-agent"])}))
-     "oshit 404 cri ^^( Q,,,Q)^^ sad cthulu")))
+     "oshit 404 cri ^^( T,,,T)^^ sad cthulu")))
 
 (defroutes user-routes
   (GET "/home" []
@@ -76,9 +80,31 @@
       (assoc resp :session (:session request))
       resp)))
 
+(defn auth-fn [{:keys [username password] :as args}]
+  (debug "Trying to log in:" args)
+  (if-let [user (m.u/get-user username)]
+    (if (creds/bcrypt-verify password (:password user))
+      (do (info (format "User '%s' logged in!" username))
+          user)
+      (debug "User" username "didn't provide the correct password!"))
+    (debug "Couldn't find user" username)))
+
+(defn do-register [{:keys [username password confirm] :as params}]
+  (if-let [errors (m.u/validate-user params)]
+    (html/signup-view :errors errors)
+    (workflows/make-auth (m.u/add-user! params))))
+
+(defn registration-form [& {:keys [register-uri]}]
+  (fn [{:keys [request-method params uri]}]
+    (when (and (= uri register-uri)
+               (= request-method :post))
+      (do-register params))))
+
 (def secured-app
   (-> app
       (friend/authenticate
-       {:credential-fn       (partial creds/bcrypt-credential-fn m.u/get-user)
-        :workflows           [(workflows/interactive-form)]
-        :default-landing-uri "/user/home"})))
+       {:credential-fn       auth-fn
+        :workflows           [(workflows/interactive-form :login-uri "/login")
+                              (registration-form :register-uri "/signup")]
+        :default-landing-uri "/user/home"
+        :login-uri           "/login"})))

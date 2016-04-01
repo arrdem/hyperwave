@@ -1,7 +1,11 @@
 (ns hyperwave.web.models.user
+  ""
+  {:authors ["Reid 'arrdem' McKenzie <me@arrdem.com>"]}
   (:require [hyperwave.web.config :as cfg]
             [hyperwave.web.models.feed :as m.f]
             [hyperwave.web.models.blocklist :as m.b]
+            [cemerick.friend.credentials :as creds]
+            [clj-uuid :as uuid]
             [rethinkdb.query :as r]))
 
 (defn- bcrypt-hash?
@@ -10,19 +14,16 @@
   {:pre [(string? s)]}
   (boolean (re-find #"\$2[aby]\$\d*\$[^\$]{53}" s)))
 
-(derive ::admin ::user)
+;; FIXME: users need an "enabled" state of some sort
+;; - could be banned until some time
+;; - could be disabled
+;; - could be deleted
 
-#_(def users
-    {"root"     {:username "root"
-                 :password (creds/hash-bcrypt "admin_password")
-                 :roles    [::admin]}
-     "arrdrunk" {:username "arrdrunk"
-                 :password (creds/hash-bcrypt "user_password")
-                 :roles    [::user]}})
-
-(defn- ->user [{:keys [id password roles meta] :as u}]
-  (when u (update u :roles (comp set (partial map keyword)))))
-
+(defn- ->user [{:keys [id password roles meta blacklists feeds] :as u}] 
+  (some-> u
+          (update :roles (comp set (partial map keyword)))
+          (update :id #(uuid/as-uuid %))
+          (update :enabled #(java.lang.Boolean/parseBoolean %))))
 
 ;; FIXME: prime use for a LRU cache at least
 (defn get-user
@@ -31,8 +32,10 @@
   [username]
   (-> (r/db cfg/rethink-db)
       (r/table cfg/users-table)
-      (r/get username)
+      ;; FIXME: use an index?
+      (r/filter (r/fn [user] (r/eq username (r/get-field user :username))))
       (r/run @cfg/rethink-inst)
+      first
       ->user))
 
 (defn exists?
@@ -40,16 +43,18 @@
   [username]
   (boolean (get-user username)))
 
+(defn validate-user [{:keys [username password confirm email]}])
+
 (defn add-user!
   "Inserts a new user into the database, creating a blocklist and a feed for them."
   [{:keys [username password] :as u}]
   {:pre [(string? username)
          (not (exists? username))
          (bcrypt-hash? password)]}
-  (let [u' (-> u
-               (assoc :id username)
-               (dissoc :username)
-               (update :roles seq)
+  (let [id (get u :id (uuid/v4))
+        u' (-> u
+               (assoc :id id)
+               (update :roles (comp #(conj % ::user) set))
                (update :feeds vec)
                (update :blocklists vec))]
     (-> (r/db cfg/rethink-db)
@@ -57,17 +62,18 @@
         (r/insert [u'])
         (r/run @cfg/rethink-inst))
 
-    (let [feed      (m.f/make-feed      {:admins [username]})
-          blocklist (m.b/make-blocklist {:admins [username]})
+    (let [feed      (m.f/make-feed      {:admins [id]})
+          blocklist (m.b/make-blocklist {:admins [id]})
           u''       (-> u'
                         (update :feeds conj feed)
                         (update :blocklists conj blocklist))]
       ;; upsert
       (-> (r/db cfg/rethink-db)
           (r/table cfg/users-table)
-          (r/get username)
           (r/insert [u''])
-          (r/run @cfg/rethink-inst)))))
+          (r/run @cfg/rethink-inst))
+
+      u'')))
 
 (defn get-users
   "Returns a seq of all the users in the database as full records."
