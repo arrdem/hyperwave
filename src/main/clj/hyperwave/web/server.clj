@@ -28,6 +28,9 @@
             jetty-cfg {:host  host
                        :port  port
                        :join? false}
+            r1        (rate)
+            r2        (rate)
+            r3        (rate)
             ;; FIXME: don't hardcode
             redis-cfg {:pool {}
                        :spec {:host "localhost"
@@ -35,9 +38,9 @@
             f         (fn [& args]
                         (binding [cfg/*redis-conn*  redis-cfg
                                   cfg/*jetty-conn*  jetty-cfg
-                                  cfg/*insert-rate* (rate)
-                                  cfg/*head-rate*   (rate)
-                                  cfg/*read-rate*   (rate)]
+                                  cfg/*insert-rate* r1
+                                  cfg/*head-rate*   r2
+                                  cfg/*read-rate*   r3]
                           (apply app args)))
             inst      (-> f
                           handler/site
