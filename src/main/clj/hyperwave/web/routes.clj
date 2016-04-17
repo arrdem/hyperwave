@@ -41,7 +41,7 @@
                  :body   (json/encode {:status "FAILURE"
                                        :body   ["No keys found, supported POST params are author, body, reply_to"]})}
 
-              (some? #(< 1024 (count %)) (vals p))
+              (some #(< 1024 (count %)) (vals p))
               ,,{:status 500
                  :body   (json/encode {:status "FAILURE"
                                        :body   ["no val can be over 1024 bytes"]})}
