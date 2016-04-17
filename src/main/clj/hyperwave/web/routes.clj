@@ -38,27 +38,37 @@
          {:status  200
           :headers {"Content-Type" "text/plain"}
           :body    (str "The Hyperwave API has the following Routes:\n"
+                        "  GET /api/v0/stats\n"
                         "  GET /api/v0/p\n"
                         "  POST /api/v0/p supported params: author=, body=, reply_to=\n"
                         "  GET /api/v0/p/:id")})
 
        (context "/api/v0" []
+         (GET "/stats" []
+           {:status  200
+            :headers {"Content-Type" "text/plain"}
+            :body    (json/encode
+                      {:put  (deref cfg/*insert-rate*)
+                       :head (deref cfg/*head-rate*)
+                       :read (deref cfg/*read-rate*)})})
+         
          (GET "/p" {{limit :limit} :params}
            (measure-latency cfg/*head-rate*
              {:status  200
-               :headers {"Content-Type" "text/plain"}
-               :body    (json/encode {:status "OK"
-                                      :body   (take (or (when limit (Long/parseLong limit)) 64)
-                                                    (b/feed))})}))
+              :headers {"Content-Type" "text/plain"}
+              :body    (json/encode {:status "OK"
+                                     :body   (take (or (when limit (Long/parseLong limit)) 64)
+                                                   (b/feed))})}))
 
          (GET "/p/:id" [id]
-           (if-let [p (b/get-one id)]
-             {:status  200
-              :headers {"Content-Type" "text/plain"}
-              :body    (json/encode {:status "OK" :body p})}
-             {:status  404
-              :headers {"Content-Type" "text/plain"}
-              :body    (json/encode {:status "FAILURE" :body ["No such post"]})}))
+           (measure-latency cfg/*read-rate*
+             (if-let [p (b/get-one id)]
+               {:status  200
+                :headers {"Content-Type" "text/plain"}
+                :body    (json/encode {:status "OK" :body p})}
+               {:status  404
+                :headers {"Content-Type" "text/plain"}
+                :body    (json/encode {:status "FAILURE" :body ["No such post"]})})))
 
          (POST "/p" {f :form-params
                      m :multipart-params}

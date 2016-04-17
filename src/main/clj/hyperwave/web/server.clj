@@ -36,7 +36,8 @@
                         (binding [cfg/*redis-conn*  redis-cfg
                                   cfg/*jetty-conn*  jetty-cfg
                                   cfg/*insert-rate* (rate)
-                                  cfg/*head-rate*   (rate)]
+                                  cfg/*head-rate*   (rate)
+                                  cfg/*read-rate*   (rate)]
                           (apply app args)))
             inst      (-> f
                           handler/site
