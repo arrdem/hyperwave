@@ -3,8 +3,7 @@
   :source-paths ["src/main/clj"]
   :test-paths   ["src/test/clj"]
 
-  :exclusions [org.clojure/clojure]
-  :dependencies [[org.jaunt-lang/jaunt "0.3.0-SNAPSHOT"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
                  [ring/ring-core "1.4.0"]
                  [ring/ring-jetty-adapter "1.4.0"]
                  [compojure "1.4.0"]
