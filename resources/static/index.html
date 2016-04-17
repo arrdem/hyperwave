@@ -1,0 +1,39 @@
+<html>
+  <head>
+    <title>Hyperwave</title>
+    <link rel="stylesheet" type="text/css" href="/css/skeleton.css">
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <div class="four columns">
+          <form action="/api/v0/p" method="post" id="send">
+            <div class="row">
+              <div class="one-ninth column">
+                <label for="author">Handle:</label>
+              </div>
+              <div class="two-ninths column">
+                <input type="text" name="author" />
+              </div>
+            </div>
+            <div class="row">
+              <div class="one-ninth column">
+                <label for="body">Body:</label>
+              </div>
+              <div class="two-ninths column">
+                <textarea id="body_area" name="body"></textarea>
+              </div>
+            </div>
+            <button type="submit">Send your message</button>
+          </form>
+        </div>
+        <div id="feed" class="eight columns">
+        </div>
+      </div>
+    </div>
+  </body>
+  <foot>
+    <script src="/js/jquery-min.js"></script>
+    <script src="/js/hyperwave.js"></script>
+  </foot>
+</html>

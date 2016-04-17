@@ -16,14 +16,13 @@
         (wcar *redis-conn*
               (car/get (str id ":body"))
               (car/get id))]
-    (when body (zipmap [:body :next] [body next]))))
+    (when body (zipmap [:ar :dr] [(assoc body :id id) next]))))
 
 (defn- feed* [id]
-  (let [{:keys [body next]} (get-one id)]
-    (when body
+  (let [{:keys [ar dr]} (get-one id)]
+    (when ar
       (lazy-seq
-       (cons (assoc body :id id)
-             (when next (feed* next)))))))
+       (cons ar (when dr (feed* dr)))))))
 
 (defn feed []
   (feed* (wcar *redis-conn* (car/get head))))
