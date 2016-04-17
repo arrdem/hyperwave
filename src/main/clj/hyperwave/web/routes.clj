@@ -19,7 +19,7 @@
      :body    (str "Welcome to Hyperwave\n"
                    "Routes:\n"
                    "  GET /api/v0/p\n"
-                   "  POST /api/v0/p\n author=, body=, reply_to="
+                   "  POST /api/v0/p supported params: author=, body=, reply_to=\n"
                    "  GET /api/v0/p/:id")})
   
   (context "/api/v0" []
