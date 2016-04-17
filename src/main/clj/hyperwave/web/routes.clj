@@ -46,8 +46,8 @@
                  :body   (json/encode {:status "FAILURE"
                                        :body   ["no val can be over 1024 bytes"]})}
 
-              (not (when-let [id (get p "reply_to")]
-                     (b/get-one id)))
+              (if-let [id (get p "reply_to")]
+                (not (b/get-one id)))
               ,,{:status 500
                  :body   (json/encode {:status "FAILURE"
                                        :body   ["reply_to must be a valid post ID if supplied"]})}
