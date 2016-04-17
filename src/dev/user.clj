@@ -1,6 +1,5 @@
 (ns user
-  (:require [hyperwave.web.server :as server]
-            [rethinkdb.query :as r]))
+  (:require [hyperwave.web.server :as server]))
 
 (defn start! []
   (server/start!)

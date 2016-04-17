@@ -4,107 +4,50 @@
   This includes the basic HTML user interface, the admin console and the API"
   {:authors ["Reid 'arrdem' McKenzie <me@arrdem.com>"]}
   (:require [clojure.string :as str]
-            [cemerick.friend :as friend]
-            [cemerick.friend
-             [credentials :as creds]
-             [workflows :as workflows]]
             [compojure
-             [core :refer [ANY context defroutes GET PUT]]
+             [core :refer [ANY context defroutes GET POST]]
              [route :as route]]
             [ring.util.response :as response]
-            [hyperwave.web.views.content.html :as html]
-            [hyperwave.web.models.user :as m.u]
+            [hyperwave.web.backend :as b]
+            [cheshire.core :as json]
             [taoensso.timbre :as timbre :refer [info warn debug]]))
 
-(defroutes public-routes
+(defroutes app
   (GET "/" []
-    "Public / page FIXME")
-
-  (GET "/robots.txt" []
-    (response/redirect "/public/robots.txt"))
+    {:status  200
+     :headers {"Content-Type" "text/plain"}
+     :body    (str "Welcome to Hyperwave\n"
+                   "Routes:\n"
+                   "  GET /api/v0/p\n"
+                   "  POST /api/v0/p\n author=, body=, reply_to="
+                   "  GET /api/v0/p/:id")})
   
-  (GET "/login" []
-    (html/login-view))
+  (context "/api/v0" []
+    (GET "/p" []
+      {:status 200
+       :body   (json/encode {:status "OK" :body (take 64 (b/feed))})})
 
-  ;; Implictit PUT /login from friend
+    (GET "/p/:id" [id]
+      (if-let [p (b/get-one id)]
+        {:status 200
+         :body   (json/encode p)}
+        {:status 404
+         :body   (json/encode {:status "FAILURE" :body ["No such post"]})}))
 
-  (friend/logout
-   (ANY "/logout" []
-     (ring.util.response/redirect "/")))
+    (POST "/p" {p :params}
+      (let [p (select-keys p ["author" "body" "reply_to"])]
+        (cond (not p)
+              ,,{:status 500
+                 :body   (json/encode {:status "FAILURE"
+                                       :body   ["No keys found, supported POST params are author, body, reply_to"]})}
+              (some? #(< 1024 (count %)) (vals p))
+              ,,{:status 500
+                 :body   (json/encode {:status "FAILURE"
+                                       :body   ["no val can be over 1024 bytes"]})}
+              :else
+              ,,(if-let [b (b/put! p)]
+                  {:status 200
+                   :body   (json/encode {:status "OK" :body p})}
+                  {:status 500
+                   :body   (json/encode {:status "FAILURE" :body ["Failed to write post"]})}))))))
 
-  (GET "/signup" []
-    (html/signup-view))
-  
-  (route/resources "/public")
-
-  (route/not-found
-   (fn [{uri :uri :as req}]
-     (warn (pr-str {:uri        uri
-                    :type       :html
-                    :user-agent (get-in req [:headers "user-agent"])}))
-     "oshit 404 cri ^^( T,,,T)^^ sad cthulu")))
-
-(defroutes user-routes
-  (GET "/home" []
-    (html/authed-home))
-  
-  (GET "/account" []
-    (html/user-settings)))
-
-(defroutes admin-routes
-  (GET "/" []
-    (html/admin-view))
-
-  (GET "/account" []
-    (html/admin-settings)))
-
-(defroutes app-routes 
-  (context "/user" []
-    (friend/wrap-authorize user-routes #{::m.u/user}))
-
-  ;; requires admin role
-  (context "/admin" []
-    (friend/wrap-authorize admin-routes #{::m.u/admin}))
-
-  public-routes)
-
-(defn update-cookie-counter [request]
-  (-> request
-      (update-in [:session :counter]          (fnil inc 0))
-      (update-in [:session :thought-about-it] (fnil identity false))))
-
-(defn app [request]
-  (let [request (update-cookie-counter request)
-        resp    (app-routes request)]
-    (if-not (:session resp)
-      (assoc resp :session (:session request))
-      resp)))
-
-(defn auth-fn [{:keys [username password] :as args}]
-  (debug "Trying to log in:" args)
-  (if-let [user (m.u/get-user username)]
-    (if (creds/bcrypt-verify password (:password user))
-      (do (info (format "User '%s' logged in!" username))
-          user)
-      (debug "User" username "didn't provide the correct password!"))
-    (debug "Couldn't find user" username)))
-
-(defn do-register [{:keys [username password confirm] :as params}]
-  (if-let [errors (m.u/validate-user params)]
-    (html/signup-view :errors errors)
-    (workflows/make-auth (m.u/add-user! params))))
-
-(defn registration-form [& {:keys [register-uri]}]
-  (fn [{:keys [request-method params uri]}]
-    (when (and (= uri register-uri)
-               (= request-method :post))
-      (do-register params))))
-
-(def secured-app
-  (-> app
-      (friend/authenticate
-       {:credential-fn       auth-fn
-        :workflows           [(workflows/interactive-form :login-uri "/login")
-                              (registration-form :register-uri "/signup")]
-        :default-landing-uri "/user/home"
-        :login-uri           "/login"})))
