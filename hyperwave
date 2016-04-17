@@ -1,0 +1,2 @@
+#!/bin/bash
+java -Xmx64m -cp `lein cp` clojure.main -m hyperwave.web.server
