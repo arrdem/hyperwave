@@ -17,7 +17,8 @@
              [validators :as v]]
             [taoensso.timbre :as timbre :refer [info warn debug]]
             [clojure.java.io :as io]
-            [interval-metrics.measure :refer [measure-latency]]
+            [interval-metrics.core :refer [snapshot!]]
+            [interval-metrics.measure :refer [measure-latency periodically]]
             [clojure.pprint :refer [pprint]]))
 
 ;; CIDER indentation crud
@@ -47,10 +48,7 @@
          (GET "/stats" []
            {:status  200
             :headers {"Content-Type" "text/plain"}
-            :body    (json/encode
-                      {:put  (deref cfg/*insert-rate*)
-                       :head (deref cfg/*head-rate*)
-                       :read (deref cfg/*read-rate*)})})
+            :body    (json/encode @cfg/last-sample)})
          
          (GET "/p" {{limit :limit} :params}
            (measure-latency cfg/*head-rate*
