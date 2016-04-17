@@ -34,9 +34,11 @@
         {:status 404
          :body   (json/encode {:status "FAILURE" :body ["No such post"]})}))
 
-    (POST "/p" {p :params}
-      (let [p (select-keys p ["author" "body" "reply_to"])]
-        (cond (not p)
+    (POST "/p" {f :form-params
+                m :multipart-params}
+      (let [p (select-keys (merge m f) ["author" "body" "reply_to"])]
+        ;; FIXME: validate author, body, reply_to strs
+        (cond (empty? p)
               ,,{:status 500
                  :body   (json/encode {:status "FAILURE"
                                        :body   ["No keys found, supported POST params are author, body, reply_to"]})}
