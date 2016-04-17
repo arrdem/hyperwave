@@ -10,6 +10,9 @@
             [ring.util.response :as response]
             [hyperwave.web.backend :as b]
             [cheshire.core :as json]
+            [bouncer
+             [core :refer [validate valid?] :as bnc]
+             [validators :as v]]
             [taoensso.timbre :as timbre :refer [info warn debug]]))
 
 (defroutes app
@@ -36,28 +39,36 @@
 
     (POST "/p" {f :form-params
                 m :multipart-params}
-      (let [p (select-keys (merge m f) ["author" "body" "reply_to"])]
+      (let [p       (select-keys (merge m f) ["author" "body" "reply_to"])
+            [_ res] (validate p
+                              "author"  [[v/string
+                                          :message "`author` may only be a string"]
+                                         [v/matches #"^@[^\s]+$"
+                                          :message "`author` must begin with @, cannot contain whitespace"]
+                                         [v/max-count 64
+                                          :message "`author` name may only be 64chrs long in total"]]
+                              "body"    [[v/required
+                                          :message "`body` is required"]
+                                         [v/string
+                                          :message "`body` may only be a string"]
+                                         [v/max-count 1024
+                                          :message "`body` is limited to 1024chrs in length"]]
+                              "reply_to" [[v/string
+                                           :message "`reply_to` must be a valid post ID if present"]
+                                          [v/max-count 46
+                                           :message "`reply_to` must be a valid post ID if present"]])]
         ;; FIXME: validate author, body, reply_to strs
-        (cond (empty? p)
+        (cond (::bnc/errors res)
               ,,{:status 500
-                 :body   (json/encode {:status "FAILURE"
-                                       :body   ["No keys found, supported POST params are author, body, reply_to"]})}
-
-              (some #(< 1024 (count %)) (vals p))
-              ,,{:status 500
-                 :body   (json/encode {:status "FAILURE"
-                                       :body   ["no val can be over 1024 bytes"]})}
+                 :body   (json/encode
+                          {:status "FAILURE"
+                           :body   (vec (vals (::bnc/errors res)))})}
 
               (if-let [id (get p "reply_to")]
                 (not (b/get-one id)))
               ,,{:status 500
                  :body   (json/encode {:status "FAILURE"
-                                       :body   ["reply_to must be a valid post ID if supplied"]})}
-
-              (not (get p "body"))
-              ,,{:status 500
-                 :body   (json/encode {:status "FAILURE"
-                                       :body   ["body must be supplied"]})}
+                                       :body   ["`reply_to` must be a valid post ID if present"]})}
 
               :else
               ,,(if-let [b (b/put! p)]

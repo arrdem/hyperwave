@@ -12,7 +12,8 @@
                  [com.taoensso/timbre "4.2.1"]
                  [com.taoensso/carmine "2.12.2"]
                  [environ "1.0.2"] 
-                 [me.arrdem/guten-tag "0.1.6"]]
+                 [me.arrdem/guten-tag "0.1.6"]
+                 [bouncer "1.0.0"]]
 
   :aliases {"serve" ["with-profile" "server" "run"]}
 

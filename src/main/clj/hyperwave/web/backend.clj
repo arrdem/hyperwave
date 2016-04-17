@@ -8,7 +8,7 @@
 
 (def *r
   {:pool {},
-   :spec {:host "texaslan.org",
+   :spec {:host "localhost",
           :port 6379}})
 
 (defn get-one [id]
