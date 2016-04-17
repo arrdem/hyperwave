@@ -58,4 +58,3 @@
                    :body   (json/encode {:status "OK" :body p})}
                   {:status 500
                    :body   (json/encode {:status "FAILURE" :body ["Failed to write post"]})}))))))
-
