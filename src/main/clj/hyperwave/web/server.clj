@@ -22,14 +22,14 @@
 (defn start! [& [port? file?]]
   (locking -inst-
     (when-not @-inst-
-      (let [host      "localhost"
+      (let [host      "0.0.0.0"
             port      (or port? 3000)
             jetty-cfg {:host  host
                        :port  port
                        :join? false}
             ;; FIXME: don't hardcode
             redis-cfg {:pool {}
-                       :spec {:host "texaslan.org"
+                       :spec {:host "localhost"
                               :port 6379}}
             f         (fn [& args]
                         (binding [cfg/*redis-conn* redis-cfg
