@@ -13,7 +13,8 @@
                  [com.taoensso/carmine "2.12.2"]
                  [environ "1.0.2"] 
                  [me.arrdem/guten-tag "0.1.6"]
-                 [bouncer "1.0.0"]]
+                 [bouncer "1.0.0"]
+                 [interval-metrics "1.0.0"]]
 
   :aliases {"serve" ["with-profile" "server" "run"]}
 

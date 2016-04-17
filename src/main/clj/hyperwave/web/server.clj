@@ -8,6 +8,7 @@
             [hyperwave.web.routes :refer [app]]
             [ring.adapter.jetty :as jetty]
             [hyperwave.web.config :as cfg]
+            [interval-metrics.core :refer [rate]]
             [taoensso.timbre :as timbre :refer [info warn]]))
 
 (defonce -inst-
@@ -32,8 +33,10 @@
                        :spec {:host "localhost"
                               :port 6379}}
             f         (fn [& args]
-                        (binding [cfg/*redis-conn* redis-cfg
-                                  cfg/*jetty-conn* jetty-cfg]
+                        (binding [cfg/*redis-conn*  redis-cfg
+                                  cfg/*jetty-conn*  jetty-cfg
+                                  cfg/*insert-rate* (rate)
+                                  cfg/*head-rate*   (rate)]
                           (apply app args)))
             inst      (-> f
                           handler/site
