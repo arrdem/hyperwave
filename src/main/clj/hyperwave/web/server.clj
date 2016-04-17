@@ -8,7 +8,7 @@
             [hyperwave.web.routes :refer [app]]
             [ring.adapter.jetty :as jetty]
             [hyperwave.web.config :as cfg]
-            [interval-metrics.core :refer [rate]]
+            [interval-metrics.core :refer [rate+latency]]
             [taoensso.timbre :as timbre :refer [info warn]]))
 
 (defonce -inst-
@@ -28,9 +28,9 @@
             jetty-cfg {:host  host
                        :port  port
                        :join? false}
-            r1        (rate)
-            r2        (rate)
-            r3        (rate)
+            r1        (rate+latency)
+            r2        (rate+latency)
+            r3        (rate+latency)
             ;; FIXME: don't hardcode
             redis-cfg {:pool {}
                        :spec {:host "localhost"
