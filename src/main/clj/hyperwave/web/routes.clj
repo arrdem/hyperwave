@@ -21,7 +21,7 @@
                    "  GET /api/v0/p\n"
                    "  POST /api/v0/p supported params: author=, body=, reply_to=\n"
                    "  GET /api/v0/p/:id")})
-  
+
   (context "/api/v0" []
     (GET "/p" []
       {:status 200
@@ -40,10 +40,18 @@
               ,,{:status 500
                  :body   (json/encode {:status "FAILURE"
                                        :body   ["No keys found, supported POST params are author, body, reply_to"]})}
+
               (some? #(< 1024 (count %)) (vals p))
               ,,{:status 500
                  :body   (json/encode {:status "FAILURE"
                                        :body   ["no val can be over 1024 bytes"]})}
+
+              (not (when-let [id (get p "reply_to")]
+                     (b/get-one id)))
+              ,,{:status 500
+                 :body   (json/encode {:status "FAILURE"
+                                       :body   ["reply_to must be a valid post ID if supplied"]})}
+
               :else
               ,,(if-let [b (b/put! p)]
                   {:status 200
