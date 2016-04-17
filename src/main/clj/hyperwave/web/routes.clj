@@ -27,15 +27,19 @@
 
   (context "/api/v0" []
     (GET "/p" []
-      {:status 200
-       :body   (json/encode {:status "OK" :body (take 64 (b/feed))})})
+      {:status  200
+       :headers {"Content-Type" "text/plain"}
+       :body    (json/encode {:status "OK" 
+                              :body   (take 64 (b/feed))})})
 
     (GET "/p/:id" [id]
       (if-let [p (b/get-one id)]
-        {:status 200
-         :body   (json/encode p)}
-        {:status 404
-         :body   (json/encode {:status "FAILURE" :body ["No such post"]})}))
+        {:status  200
+         :headers {"Content-Type" "text/plain"}
+         :body    (json/encode p)}
+        {:status  404
+         :headers {"Content-Type" "text/plain"}
+         :body    (json/encode {:status "FAILURE" :body ["No such post"]})}))
 
     (POST "/p" {f :form-params
                 m :multipart-params}
@@ -59,20 +63,24 @@
                                            :message "`reply_to` must be a valid post ID if present"]])]
         ;; FIXME: validate author, body, reply_to strs
         (cond (::bnc/errors res)
-              ,,{:status 500
-                 :body   (json/encode
-                          {:status "FAILURE"
-                           :body   (vec (vals (::bnc/errors res)))})}
+              ,,{:status  500
+                 :headers {"Content-Type" "text/plain"}
+                 :body    (json/encode
+                           {:status "FAILURE"
+                            :body   (vec (vals (::bnc/errors res)))})}
 
               (if-let [id (get p "reply_to")]
                 (not (b/get-one id)))
-              ,,{:status 500
-                 :body   (json/encode {:status "FAILURE"
-                                       :body   ["`reply_to` must be a valid post ID if present"]})}
+              ,,{:status  500
+                 :headers {"Content-Type" "text/plain"}
+                 :body    (json/encode {:status "FAILURE"
+                                        :body   ["`reply_to` must be a valid post ID if present"]})}
 
               :else
               ,,(if-let [b (b/put! p)]
-                  {:status 200
-                   :body   (json/encode {:status "OK" :body p})}
-                  {:status 500
-                   :body   (json/encode {:status "FAILURE" :body ["Failed to write post"]})}))))))
+                  {:status  200
+                   :headers {"Content-Type" "text/plain"}
+                   :body    (json/encode {:status "OK" :body p})}
+                  {:status  500
+                   :headers {"Content-Type" "text/plain"}
+                   :body    (json/encode {:status "FAILURE" :body ["Failed to write post"]})}))))))
