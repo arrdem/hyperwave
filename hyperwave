@@ -1,3 +1,4 @@
 #!/bin/bash
-java -Xmx64m -cp `lein cp` clojure.main -m hyperwave.web.server 2&>1 > hyperwave.log &
+CP=`lein cp`
+java -Xmx64m -cp $CP clojure.main -m hyperwave.web.server 2&>1 > hyperwave.log &
 echo $! > hyperwave.pid
