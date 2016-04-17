@@ -54,6 +54,11 @@
                  :body   (json/encode {:status "FAILURE"
                                        :body   ["reply_to must be a valid post ID if supplied"]})}
 
+              (not (get p "body"))
+              ,,{:status 500
+                 :body   (json/encode {:status "FAILURE"
+                                       :body   ["body must be supplied"]})}
+
               :else
               ,,(if-let [b (b/put! p)]
                   {:status 200
