@@ -3,23 +3,20 @@
 
   This includes the basic HTML user interface, the admin console and the API"
   {:authors ["Reid 'arrdem' McKenzie <me@arrdem.com>"]}
-  (:require [clojure.string :as str]
-            [compojure
-             [core :refer [ANY context defroutes routes GET POST]]
-             [route :as route]]
-            [ring.util.response :as response]
-            [ring.middleware.resource :refer [wrap-resource]]
-            [hyperwave.web.backend :as b]
-            [hyperwave.web.config :as cfg]
-            [cheshire.core :as json]
-            [bouncer
-             [core :refer [validate valid?] :as bnc]
+  (:require [bouncer
+             [core :as bnc :refer [validate]]
              [validators :as v]]
-            [taoensso.timbre :as timbre :refer [info warn debug]]
+            [cheshire.core :as json]
             [clojure.java.io :as io]
-            [interval-metrics.core :refer [snapshot!]]
-            [interval-metrics.measure :refer [measure-latency periodically]]
-            [clojure.pprint :refer [pprint]]))
+            [compojure.core :refer [context GET POST routes]]
+            [hyperwave.web
+             [backend :as b]
+             [config :as cfg]]
+            [interval-metrics
+             [core :refer [update!]]
+             [measure :refer [measure-latency]]]
+            [ring.middleware.resource :refer [wrap-resource]])
+  (:import clojure.lang.ExceptionInfo))
 
 ;; CIDER indentation crud
 (alter-meta! #'measure-latency
@@ -105,11 +102,16 @@
                                                :body   ["`reply_to` must be a valid post ID if present"]})}
 
                      :else
-                     ,,(if-let [b (b/put! p)]
-                         {:status  200
-                          :headers {"Content-Type" "text/plain"}
-                          :body    (json/encode {:status "OK" :body b})}
-                         {:status  500
-                          :headers {"Content-Type" "text/plain"}
-                          :body    (json/encode {:status "FAILURE" :body ["Failed to write post"]})})))))))
+                     ,,(try (let [b (b/put! p)]
+                              {:status  200
+                               :headers {"Content-Type" "text/plain"}
+                               :body    (json/encode {:status "OK" :body b})})
+                            (catch ExceptionInfo i
+                              (update! cfg/*tfail-rate* 1)
+                              {:status  503
+                               :headers {"Content-Type" "text/plain"
+                                         "Retry-After"  3}
+                               :body    (json/encode
+                                         {:status "FAILURE"
+                                          :body   ["Failed to commit post due to write contention"]})}))))))))
       (wrap-resource "public")))

@@ -8,7 +8,7 @@
             [hyperwave.web.routes :refer [app]]
             [ring.adapter.jetty :as jetty]
             [hyperwave.web.config :as cfg]
-            [interval-metrics.core :refer [snapshot! rate+latency]]
+            [interval-metrics.core :refer [snapshot! rate+latency rate]]
             [interval-metrics.measure :refer [periodically]]
             [taoensso.timbre :as timbre :refer [info warn]]))
 
@@ -51,13 +51,15 @@
             r1 (rate+latency)
             r2 (rate+latency)
             r3 (rate+latency)
+            r4 (rate)
             
             f       (fn [& args]
                       (binding [cfg/*redis-conn*  redis-cfg
                                 cfg/*jetty-conn*  jetty-cfg
                                 cfg/*insert-rate* r1
                                 cfg/*head-rate*   r2
-                                cfg/*read-rate*   r3]
+                                cfg/*read-rate*   r3
+                                cfg/*tfail-rate*  r4]
                         (apply app args)))
             inst    (-> f
                         handler/site
@@ -68,7 +70,8 @@
                               {:period t
                                :put    (snapshot! r1)
                                :head   (snapshot! r2)
-                               :read   (snapshot! r3)}))]
+                               :read   (snapshot! r3)
+                               :tfail  (snapshot! r4)}))]
         (info (format "Starting server: http://%s:%d" host port))
         (reset! -inst- inst)
         (reset! -poller- watcher)))))

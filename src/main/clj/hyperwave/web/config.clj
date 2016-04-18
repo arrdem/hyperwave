@@ -6,6 +6,7 @@
 (def ^:dynamic *insert-rate* nil)
 (def ^:dynamic *head-rate* nil)
 (def ^:dynamic *read-rate* nil)
+(def ^:dynamic *tfail-rate* nil)
 
 (defonce last-sample
   (atom nil))
