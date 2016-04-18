@@ -44,6 +44,16 @@ GET /api/v0/p/:id
   Otherwise returns a 404 if there is no such document
 ```
 
+## Usage
+
+Expects an unsecured redis instance running on localhost
+
+Binds to 0.0.0.0:3000
+
+```
+git clone && lein with-profile server run
+```
+
 ## Legal
 
 Copyright © 2016 Reid 'arrdem' McKenzie
