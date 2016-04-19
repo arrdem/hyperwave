@@ -1,37 +1,31 @@
 (ns hyperwave.web.backend
   (:require [taoensso.carmine
              :as car
-             :refer [wcar atomic]]
-            [hyperwave.web.config :refer [*redis-conn*]]))
+             :refer [wcar atomic]]))
 
 (def head "hyperwave:head")
 
-(def *r
-  {:pool {},
-   :spec {:host "localhost",
-          :port 6379}})
-
-(defn get-one [id]
+(defn get-one [redis id]
   (let [[body next]
-        (wcar *redis-conn*
+        (wcar redis
               (car/get (str id ":body"))
               (car/get id))]
     (when body (zipmap [:ar :dr] [(assoc body :id id) next]))))
 
-(defn- feed* [id]
-  (let [{:keys [ar dr]} (get-one id)]
+(defn- feed* [redis id]
+  (let [{:keys [ar dr]} (get-one redis id)]
     (when ar
       (lazy-seq
-       (cons ar (when dr (feed* dr)))))))
+       (cons ar (when dr (feed* redis dr)))))))
 
-(defn feed []
-  (feed* (wcar *redis-conn* (car/get head))))
+(defn feed [redis]
+  (feed* redis (wcar redis (car/get head))))
 
-(defn put! [msg]
+(defn put! [redis msg]
   (let [id  (str "hyperwave:" (java.util.UUID/randomUUID))
         bid (str id ":body")
         msg (assoc msg :date (java.util.Date.))]
-    (and (atomic *redis-conn* 100
+    (and (atomic redis 100
                  (car/watch head)
                  (let [head* (car/with-replies (car/get head))]
                    (car/multi)

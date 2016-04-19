@@ -1,80 +1,76 @@
 (ns hyperwave.web.server
   "Implementation of the runnable webserver
-  
+
   Ties together the Ring routes with initializer code and a webserver."
   {:authors ["Reid 'arrdem' McKenzie <me@arrdem.com>"]}
   (:require [compojure.handler :as handler]
             [ring.middleware.session :as session]
             [hyperwave.web.routes :refer [app]]
             [ring.adapter.jetty :as jetty]
-            [hyperwave.web.config :as cfg]
             [interval-metrics.core :refer [snapshot! rate+latency rate]]
             [interval-metrics.measure :refer [periodically]]
             [taoensso.timbre :as timbre :refer [info warn]]))
 
+(defn update-vals [f m]
+  (into (empty m)
+        (for [[k v] m]
+          [k (f v)])))
+
 (alter-meta! #'periodically
              assoc :style/indent 1)
 
-(defonce -inst-
+(defonce
+  ^{:doc "Keys
+  - :jetty
+  - :poller
+  - :cfg"}
+  -inst-
   (atom nil))
 
-(defonce -poller-
-  (atom nil))
+(defn running? []
+  (not (nil? @-inst-)))
 
 (defn stop! []
   (locking -inst-
-    (locking -poller-
-      (when-let [i @-inst-]
-        (.stop i))
-      (reset! -inst- nil)
-
-      (when-let [p @-poller-]
-        (p))
-      (reset! -poller- nil))))
+    (let [{:keys [jetty poller]} @-inst-]
+      (when jetty (.stop jetty))
+      (when poller (poller)))
+    (reset! -inst- nil)))
 
 (defn start! [& [port? file?]]
   (locking -inst-
     (when-not @-inst-
-      (let [host      "0.0.0.0"
-            port      (or port? 3000)
-            t         10 ; seconds, polling rate
-            jetty-cfg {:host  host
-                       :port  port
-                       :join? false}
-            
-            ;; FIXME: don't hardcode
-            redis-cfg {:pool {}
-                       :spec {:host "localhost"
-                              :port 6379}}
-
-            ;; shared global state, but closed over here
-            r1 (rate+latency)
-            r2 (rate+latency)
-            r3 (rate+latency)
-            r4 (rate)
-            
-            f       (fn [& args]
-                      (binding [cfg/*redis-conn*  redis-cfg
-                                cfg/*jetty-conn*  jetty-cfg
-                                cfg/*insert-rate* r1
-                                cfg/*head-rate*   r2
-                                cfg/*read-rate*   r3
-                                cfg/*tfail-rate*  r4]
-                        (apply app args)))
-            inst    (-> f
-                        handler/site
-                        session/wrap-session
-                        (jetty/run-jetty jetty-cfg))
-            watcher (periodically t
-                      (reset! cfg/last-sample
-                              {:period t
-                               :put    (snapshot! r1)
-                               :head   (snapshot! r2)
-                               :read   (snapshot! r3)
-                               :tfail  (snapshot! r4)}))]
+      (let [jetty-cfg          {:host  "0.0.0.0"
+                                :port  (or port? 3000)
+                                :join? false}
+            redis-cfg          {:pool {}
+                                :spec {:host "localhost"
+                                       :port 6379}}
+            counters           {:head   (rate+latency)
+                                :read   (rate+latency)
+                                :insert (rate+latency)
+                                :tfail  (rate)}
+            sample             (atom nil)
+            {:as       cfg
+             jetty-cfg :jetty} {:redis       redis-cfg
+                                :jetty       jetty-cfg
+                                :counters    counters
+                                :sample-atom sample}
+            jetty-inst         (-> (app cfg)
+                                   handler/site
+                                   session/wrap-session
+                                   (jetty/run-jetty jetty-cfg))
+            poller-inst        (periodically 10 ; sec
+                                 (reset! sample
+                                         (-> (update-vals snapshot! counters)
+                                             (assoc :period t))))]
         (info (format "Starting server: http://%s:%d" host port))
-        (reset! -inst- inst)
-        (reset! -poller- watcher)))))
+        (reset! -inst-
+                {:jetty  jetty-inst
+                 :poller poller-inst
+                 :cfg    cfg})
+
+        cfg))))
 
 (defn restart! [& [port?]]
   (stop!)

@@ -10,8 +10,7 @@
             [clojure.java.io :as io]
             [compojure.core :refer [context GET POST routes]]
             [hyperwave.web
-             [backend :as b]
-             [config :as cfg]]
+             [backend :as b]]
             [interval-metrics
              [core :refer [update!]]
              [measure :refer [measure-latency]]]
@@ -25,7 +24,9 @@
 (alter-meta! #'validate
              assoc :style/indent 1)
 
-(def app
+(defn app [{{:keys [head read insert tfail]} :counters
+            last-sample                      :sample-atom
+            redis-cfg                        :redis}]
   (-> (routes
        (GET "/" []
          {:status  200
@@ -45,19 +46,19 @@
          (GET "/stats" []
            {:status  200
             :headers {"Content-Type" "text/plain"}
-            :body    (json/encode @cfg/last-sample)})
-         
+            :body    (json/encode @last-sample)})
+
          (GET "/p" {{limit :limit} :params}
-           (measure-latency cfg/*head-rate*
+           (measure-latency head
              {:status  200
               :headers {"Content-Type" "text/plain"}
               :body    (json/encode {:status "OK"
                                      :body   (take (or (when limit (Long/parseLong limit)) 64)
-                                                   (b/feed))})}))
+                                                   (b/feed redis-cfg))})}))
 
          (GET "/p/:id" [id]
-           (measure-latency cfg/*read-rate*
-             (if-let [p (b/get-one id)]
+           (measure-latency read
+             (if-let [p (b/get-one redis-cfg id)]
                {:status  200
                 :headers {"Content-Type" "text/plain"}
                 :body    (json/encode {:status "OK" :body p})}
@@ -67,7 +68,7 @@
 
          (POST "/p" {f :form-params
                      m :multipart-params}
-           (measure-latency cfg/*insert-rate*
+           (measure-latency insert
              (let [p       (select-keys (merge m f) ["author" "body" "reply_to"])
                    [_ res] (validate p
                              "author"  [[v/string
@@ -95,19 +96,19 @@
                                    :body   (vec (vals (::bnc/errors res)))})}
 
                      (if-let [id (get p "reply_to")]
-                       (not (b/get-one id)))
+                       (not (b/get-one redis-cfg id)))
                      ,,{:status  500
                         :headers {"Content-Type" "text/plain"}
                         :body    (json/encode {:status "FAILURE"
                                                :body   ["`reply_to` must be a valid post ID if present"]})}
 
                      :else
-                     ,,(try (let [b (b/put! p)]
+                     ,,(try (let [b (b/put! redis-cfg p)]
                               {:status  200
                                :headers {"Content-Type" "text/plain"}
                                :body    (json/encode {:status "OK" :body b})})
                             (catch ExceptionInfo i
-                              (update! cfg/*tfail-rate* 1)
+                              (update! tfail 1)
                               {:status  503
                                :headers {"Content-Type" "text/plain"
                                          "Retry-After"  3}
