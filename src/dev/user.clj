@@ -1,7 +1,10 @@
 (ns user
-  (:require [hyperwave.web.server :as server]
-            [hyperwave.web.backend :as b]
-            [hyperwave.web.routes :as r]))
+  (:require [bouncer.core :as bnc :refer [validate]]
+            [hyperwave.web
+             [backend :as b]
+             [server :as server]]
+            [interval-metrics.measure :refer [measure-latency periodically]]
+            [taoensso.carmine :as car :refer [atomic wcar]]))
 
 (defn start! []
   (server/start!)
@@ -21,3 +24,24 @@
 
 (defn post! [m]
   (b/put! *r m))
+
+;; indentation crap
+(alter-meta! #'measure-latency
+             assoc :style/indent 1)
+
+(alter-meta! #'validate
+             assoc :style/indent 1)
+
+(alter-meta! #'periodically
+             assoc :style/indent 1)
+
+(alter-meta! #'atomic
+             assoc :style/indent 1)
+
+(alter-meta! #'wcar
+             assoc :style/indent 1)
+
+(alter-meta! #'wcar
+             assoc :style/indent 1)
+
+:ok

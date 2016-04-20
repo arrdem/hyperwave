@@ -4,20 +4,18 @@
   Ties together the Ring routes with initializer code and a webserver."
   {:authors ["Reid 'arrdem' McKenzie <me@arrdem.com>"]}
   (:require [compojure.handler :as handler]
-            [ring.middleware.session :as session]
             [hyperwave.web.routes :refer [app]]
+            [interval-metrics
+             [core :refer [rate rate+latency snapshot!]]
+             [measure :refer [periodically]]]
             [ring.adapter.jetty :as jetty]
-            [interval-metrics.core :refer [snapshot! rate+latency rate]]
-            [interval-metrics.measure :refer [periodically]]
-            [taoensso.timbre :as timbre :refer [info warn]]))
+            [ring.middleware.session :as session]
+            [taoensso.timbre :as timbre :refer [info]]))
 
 (defn update-vals [f m]
   (into (empty m)
         (for [[k v] m]
           [k (f v)])))
-
-(alter-meta! #'periodically
-             assoc :style/indent 1)
 
 (defonce
   ^{:doc "Keys
@@ -60,11 +58,14 @@
                                    handler/site
                                    session/wrap-session
                                    (jetty/run-jetty jetty-cfg))
-            poller-inst        (periodically 10 ; sec
+            t                  10 ; sec
+            poller-inst        (periodically t
                                  (reset! sample
                                          (-> (update-vals snapshot! counters)
                                              (assoc :period t))))]
-        (info (format "Starting server: http://%s:%d" host port))
+        (info (format "Starting server: http://%s:%d"
+                      (:host jetty-cfg)
+                      (:port jetty-cfg)))
         (reset! -inst-
                 {:jetty  jetty-inst
                  :poller poller-inst

@@ -1,22 +1,20 @@
 (ns hyperwave.web.backend
-  (:require [taoensso.carmine
-             :as car
-             :refer [wcar atomic]]))
+  (:require [taoensso.carmine :as car :refer [atomic wcar]]))
 
 (def head "hyperwave:head")
 
 (defn get-one [redis id]
   (let [[body next]
         (wcar redis
-              (car/get (str id ":body"))
-              (car/get id))]
-    (when body (zipmap [:ar :dr] [(assoc body :id id) next]))))
+          (car/get (str id ":body"))
+          (car/get id))]
+    (when body
+      {:ar (assoc body :id id)
+       :dr next})))
 
 (defn- feed* [redis id]
   (let [{:keys [ar dr]} (get-one redis id)]
-    (when ar
-      (lazy-seq
-       (cons ar (when dr (feed* redis dr)))))))
+    (when ar (lazy-seq (cons ar (when dr (feed* redis dr)))))))
 
 (defn feed [redis]
   (feed* redis (wcar redis (car/get head))))

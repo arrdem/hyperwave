@@ -9,20 +9,12 @@
             [cheshire.core :as json]
             [clojure.java.io :as io]
             [compojure.core :refer [context GET POST routes]]
-            [hyperwave.web
-             [backend :as b]]
+            [hyperwave.web.backend :as b]
             [interval-metrics
              [core :refer [update!]]
              [measure :refer [measure-latency]]]
             [ring.middleware.resource :refer [wrap-resource]])
   (:import clojure.lang.ExceptionInfo))
-
-;; CIDER indentation crud
-(alter-meta! #'measure-latency
-             assoc :style/indent 1)
-
-(alter-meta! #'validate
-             assoc :style/indent 1)
 
 (defn app [{{:keys [head read insert tfail]} :counters
             last-sample                      :sample-atom
