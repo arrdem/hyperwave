@@ -7,19 +7,20 @@
             [taoensso.carmine :as car :refer [atomic wcar]]))
 
 (defn start! []
-  (server/start!)
-  :ok)
+  (and (server/start!)
+       :ok))
 
 (defn stop! []
-  (server/stop!)
-  :ok)
+  (and (server/stop!)
+       :ok))
 
 (defn restart! []
-  (server/restart!))
+  (and (server/restart!)
+       :ok))
 
 (def *r
-  {:pool {},
-   :spec {:host "localhost",
+  {:pool {}
+   :spec {:host "localhost"
           :port 6379}})
 
 (defn post! [m]
