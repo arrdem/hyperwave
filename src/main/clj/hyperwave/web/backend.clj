@@ -107,11 +107,9 @@
                   (let [head* (car/with-replies (car/get hk))]
                     (car/multi)
                     (car/set bk r)
-                    (println "[push!]" head*)
                     (car/set hk id)
                     (car/set id head*)
                     (car/incr ck)))]
-    (println "[push!]" res)
     id))
 
 (defn feed [conn]
