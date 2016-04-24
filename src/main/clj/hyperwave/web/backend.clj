@@ -82,17 +82,18 @@
                  (Cursor. conn nk (dec count)))))))))
 
 (defn list->cursor [conn l]
-  (let [l                  (as-list l)
-        ck                 (list->counter l)
-        hk                 (list->head l)
-        res                (atomic conn 10
-                             (car/watch ck)
-                             (car/watch hk)
-                             (car/multi)
-                             (car/get ck)
-                             (car/get hk))
-        [_ _ [count head]] res]
-    (Cursor. conn head (int (or count 0)))))
+  (let [l                (as-list l)
+        ck               (list->counter l)
+        hk               (list->head l)
+        res              (atomic conn 10
+                           (car/watch ck)
+                           (car/watch hk)
+                           (car/multi)
+                           (car/get ck)
+                           (car/get hk))
+        [_ [count head]] res]
+    (println "[list->cursor]" conn l res count head)
+    (->Cursor conn head (java.lang.Integer/parseInt count))))
 
 (defn push! [conn l r]
   (let [^List l (as-list l)
