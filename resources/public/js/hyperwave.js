@@ -8,8 +8,12 @@ function postHtml(post) {
     return "<div class=\"post row\" id=\""+post.id+"\"><div class=\"post-body five columns\">"+post.body+"</div><div class=\"author two columns\">"+post.author+"</div><div class=\"one column\"></div></div>";
 };
 
+function replaceAll(str, find, replace) {
+  return str.replace(new RegExp(find, 'g'), replace);
+}
+
 function postId(post) {
-    return "#"+(post.id.replace(/:/,"\\:"));
+    return "#"+replaceAll(post.id, /:/, "\\:");
 }
 
 function chainUpdateStar(elem, id) {
@@ -22,7 +26,9 @@ function chainUpdateStar(elem, id) {
             var newId = postId(post);
             if($(newId).length == 0) {
                 $(elem).insertAfter(postHtml(post));
-                chainUpdateStar(newId, next);
+                if(next != null) {
+                    chainUpdateStar(newId, next);
+                }
             }
         }
     });
@@ -33,7 +39,9 @@ function chainUpdate(id) {
         data = JSON.parse(data);
         if(data.status == "OK") {
             var next = data.body.dr;
-            chainUpdateStar(id, next);
+            if(next != null) {
+                chainUpdateStar(id, next);
+            }
         }
     });
 }
@@ -75,7 +83,7 @@ function updateFeed(lastTimeout) {
 
         if(changed != false && lastTimeout == 0) {
             lastTimeout = 1000;                
-        } else if(changed != false) {
+        } else if (changed != false) {
             console.log("Found new posts! Setting timeout to 1000, chain updating!");
             lastTimeout = 1000;
             chainUpdate(changed);

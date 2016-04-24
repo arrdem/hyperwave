@@ -92,7 +92,6 @@
                            (car/get ck)
                            (car/get hk))
         [_ [count head]] res]
-    (println "[list->cursor]" conn l res count head)
     (->Cursor conn head (java.lang.Integer/parseInt count))))
 
 (defn push! [conn l r]

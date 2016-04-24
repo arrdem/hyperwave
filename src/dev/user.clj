@@ -45,4 +45,38 @@
 (alter-meta! #'wcar
              assoc :style/indent 1)
 
+(def *r
+  {:pool {}
+   :spec {:host "localhost"
+          :port 6379}})
+
+(defmacro in-thread [& forms]
+  `(do (.start (java.lang.Thread. (fn [] ~@forms)))
+       nil))
+
+(defn bench! [workers interval]
+  (let [state   (atom false)
+        counter (java.util.concurrent.atomic.AtomicLong. 0)]
+    (dotimes [i workers]
+      (in-thread
+       (loop []
+         (do (try (b/put! *r {:body i :author (str "@speedbot:" i)})
+                  (.getAndIncrement counter)
+                  (catch Exception e nil))
+             (when-not @state
+               (recur))))))
+    (Thread/sleep interval)
+    (swap! state not)
+    (.longValue counter)))
+
+(defn do-bench! []
+  (doseq [workers (range 10 500 10)
+          time    (range 1000 6000 1000)]
+    (let [res  (bench! workers time)
+          line (str workers \tab time \tab res)]
+      (println line)
+      (spit "datafile.dat"
+            (str line \newline)
+            :append true))))
+
 :ok
