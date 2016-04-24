@@ -50,13 +50,15 @@
 
          (GET "/p/:id" [id]
            (measure-latency read
-             (if-let [p (b/get-one redis-cfg id)]
-               {:status  200
-                :headers {"Content-Type" "text/plain"}
-                :body    (json/encode {:status "OK" :body p})}
-               {:status  404
-                :headers {"Content-Type" "text/plain"}
-                :body    (json/encode {:status "FAILURE" :body ["No such post"]})})))
+             (let [res (if-let [p (b/get-one redis-cfg id)]
+                         {:status  200
+                          :headers {"Content-Type" "text/plain"}
+                          :body    (json/encode {:status "OK" :body p})}
+                         {:status  404
+                          :headers {"Content-Type" "text/plain"}
+                          :body    (json/encode {:status "FAILURE" :body ["No such post"]})})]
+               (printf "GET /api/v0/p/%s\n    %s\n" id (pr-str res))
+               res)))
 
          (POST "/p" {f :form-params
                      m :multipart-params}
