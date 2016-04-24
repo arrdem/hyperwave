@@ -104,12 +104,12 @@
         res     (atomic conn 1
                   (car/watch ck)
                   (car/watch hk)
-                  (car/multi)
                   (let [head* (car/with-replies (car/get hk))]
-                    (println "[push!]" head*)
+                    (car/multi)
                     (car/set bk r)
-                    (car/set id head*)
+                    (println "[push!]" head*)
                     (car/set hk id)
+                    (car/set id head*)
                     (car/incr ck)))]
     (println "[push!]" res)
     id))
