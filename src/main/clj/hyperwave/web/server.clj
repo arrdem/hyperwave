@@ -8,7 +8,7 @@
             [interval-metrics
              [core :refer [rate rate+latency snapshot!]]
              [measure :refer [periodically]]]
-            [ring.adapter.jetty :as jetty]
+            [org.httpkit.server :as server]
             [ring.middleware.session :as session]
             [taoensso.timbre :as timbre :refer [info]]))
 
@@ -41,36 +41,38 @@
 (defn start! [& [port? file?]]
   (try (locking -inst-
          (when-not @-inst-
-           (let [jetty-cfg          {:host  "0.0.0.0"
-                                     :port  (or port? 3000)
-                                     :join? false}
-                 redis-cfg          {:pool {}
-                                     :spec {:host "localhost"
-                                            :port 6379}}
-                 counters           {:head   (rate+latency)
-                                     :read   (rate+latency)
-                                     :insert (rate+latency)
-                                     :tfail  (rate)}
-                 sample             (atom nil)
-                 {:as       cfg
-                  jetty-cfg :jetty} {:redis       redis-cfg
-                                     :jetty       jetty-cfg
-                                     :counters    counters
-                                     :sample-atom sample}
-                 jetty-inst         (-> (app cfg)
-                                        handler/site
-                                        session/wrap-session
-                                        (jetty/run-jetty jetty-cfg))
-                 t                  10 ; sec
-                 poller-inst        (periodically t
-                                      (reset! sample
-                                              (-> (update-vals snapshot! counters)
-                                                  (assoc :period t))))]
+           (let [server-cfg           {:host     "0.0.0.0"
+                                       :port     (or port? 3000)
+                                       :join?    false
+                                       :max-body 4096
+                                       :max-line 256}
+                 redis-cfg            {:pool {}
+                                       :spec {:host "localhost"
+                                              :port 6379}}
+                 counters             {:head   (rate+latency)
+                                       :read   (rate+latency)
+                                       :insert (rate+latency)
+                                       :tfail  (rate)}
+                 sample               (atom nil)
+                 {:as        cfg
+                  server-cfg :server} {:redis       redis-cfg
+                                       :server      server-cfg
+                                       :counters    counters
+                                       :sample-atom sample}
+                 server-inst          (-> (app cfg)
+                                          handler/site
+                                          session/wrap-session
+                                          (server/run-server server-cfg))
+                 t                    10 ; sec
+                 poller-inst          (periodically t
+                                        (reset! sample
+                                                (-> (update-vals snapshot! counters)
+                                                    (assoc :period t))))]
              (info (format "Starting server: http://%s:%d"
-                           (:host jetty-cfg)
-                           (:port jetty-cfg)))
+                           (:host server-cfg)
+                           (:port server-cfg)))
              (reset! -inst-
-                     {:jetty  jetty-inst
+                     {:jetty  server-inst
                       :poller poller-inst
                       :cfg    cfg})
 
